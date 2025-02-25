@@ -10,6 +10,9 @@ import torch.nn as nn
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+#calculate_returns用于计算每个时间步的回报。
+# 它从最后一个时间步开始，反向计算每个时间步的回报，使用折扣因子 gamma 和掩码 masks 来处理终止状态
+
 def calculate_returns(next_value, rewards, masks, gamma=0.99):
     R = next_value
     returns = []
