@@ -21,8 +21,8 @@ def calculate_returns(next_value, rewards, masks, gamma=0.99):
         returns.insert(0, R)
     return returns
 
-
-class PositionalMapping(nn.Module):
+#PositionalMapping用于将连续输入坐标映射到更高维空间，并使预测更容易逼近更高频率的函数。
+class PositionalMapping(nn.Module): 
     """
     Positional mapping Layer.
     This layer map continuous input coordinates into a higher dimensional space
@@ -99,47 +99,47 @@ class ActorCritic(nn.Module):
 
     def forward(self, x):
         # shape x: batch_size x m_token x m_state
-        y = self.actor(x)
-        probs = self.softmax(y)
-        value = self.critic(x)
+        y = self.actor(x)#调用actor函数计算y
+        probs = self.softmax(y)#计算概率
+        value = self.critic(x)#调用critic函数计算value
 
         return probs, value
 
     def get_action(self, state, deterministic=False, exploration=0.01):
 
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
-        probs, value = self.forward(state)
-        probs = probs[0, :]
-        value = value[0]
+        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)#将state转换为张量
+        probs, value = self.forward(state)#调用forward函数计算probs和value
+        probs = probs[0, :]#取probs的第一行
+        value = value[0]#取value的第一行
 
         if deterministic:
             action_id = np.argmax(np.squeeze(probs.detach().cpu().numpy()))
         else:
             if random.random() < exploration:  # exploration
-                action_id = random.randint(0, self.output_dim - 1)
+                action_id = random.randint(0, self.output_dim - 1)#随机选择一个动作
             else:
-                action_id = np.random.choice(self.output_dim, p=np.squeeze(probs.detach().cpu().numpy()))
+                action_id = np.random.choice(self.output_dim, p=np.squeeze(probs.detach().cpu().numpy()))#根据概率选择一个动作
 
-        log_prob = torch.log(probs[action_id] + 1e-9)
+        log_prob = torch.log(probs[action_id] + 1e-9)#计算对数概率
 
-        return action_id, log_prob, value
+        return action_id, log_prob, value #返回动作id，对数概率和value
 
     @staticmethod
     def update_ac(network, rewards, log_probs, values, masks, Qval, gamma=0.99):
 
         # compute Q values
-        Qvals = calculate_returns(Qval.detach(), rewards, masks, gamma=gamma)
-        Qvals = torch.tensor(Qvals, dtype=torch.float32).to(device).detach()
+        Qvals = calculate_returns(Qval.detach(), rewards, masks, gamma=gamma) #调用calculate_returns函数计算每个时间步的回报
+        Qvals = torch.tensor(Qvals, dtype=torch.float32).to(device).detach()#将Qvals转换为张量
 
-        log_probs = torch.stack(log_probs)
-        values = torch.stack(values)
+        log_probs = torch.stack(log_probs)#将log_probs转换为张量
+        values = torch.stack(values)#将values转换为张量
 
-        advantage = Qvals - values
-        actor_loss = (-log_probs * advantage.detach()).mean()
-        critic_loss = 0.5 * advantage.pow(2).mean()
-        ac_loss = actor_loss + critic_loss
+        advantage = Qvals - values#计算优势
+        actor_loss = (-log_probs * advantage.detach()).mean()#计算actor损失
+        critic_loss = 0.5 * advantage.pow(2).mean()#计算critic损失
+        ac_loss = actor_loss + critic_loss#计算actor-critic损失
 
-        network.optimizer.zero_grad()
-        ac_loss.backward()
-        network.optimizer.step()
+        network.optimizer.zero_grad()#梯度清零
+        ac_loss.backward()#损失反向传播
+        network.optimizer.step()#更新参数
 
